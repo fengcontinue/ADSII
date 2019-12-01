@@ -31,7 +31,7 @@ u16 voltage;
 u8 leak;
 double gpitch,groll;
 double FangWei_ZhuanTai=0.0, FuYang_ZhuanTai=0.0;
-uint8_t AGC_threshold=150, AGC_now=0;
+uint16_t AGC_threshold=150, AGC_now=0;
 gpsdata mubiao_gps={110.5, 0, 36000.0 + 6370.0}, zhuantai_gps={104.06, 30.67, 6370};
 
 
