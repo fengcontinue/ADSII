@@ -147,6 +147,19 @@ __packed typedef struct
 	u8 check;
 }msg_e14; //伺服控制器数据
 
+__packed typedef struct
+{
+	u8 header;
+	u8 frameno;
+	s16 course;						//航向，比例0.01
+	s16 pitch;						//纵摇，比例0.01
+	s16 roll;							//横滚，比例0.01
+	u16 AGC;
+	s16 dbm;
+	u8 reserve;
+	u8 check;
+}msg_e15;//AP
+
 extern msg_e1 e1;
 extern msg_e2 e2;
 extern msg_e3 e3;
@@ -160,6 +173,7 @@ extern msg_e11 e11;
 extern msg_e12 e12;
 extern msg_e13 e13;
 extern msg_e14 e14;
+extern msg_e15 e15;
 
 u8 check(u8* buf,u16 len);
 double cal_angle ( uint8_t* data );

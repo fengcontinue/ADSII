@@ -29,10 +29,10 @@ FlagStatus flag_e7 = RESET;
 u16 pressure;
 u16 voltage;
 u8 leak;
-double gpitch,groll;
-double FangWei_ZhuanTai=0.0, FuYang_ZhuanTai=0.0;
-uint16_t AGC_threshold=150, AGC_now=0;
-gpsdata mubiao_gps={110.5, 0, 36000.0 + 6370.0}, zhuantai_gps={104.06, 30.67, 6370};
+double gpitch, groll;
+double FangWei_ZhuanTai = 0.0, FuYang_ZhuanTai = 0.0;
+uint16_t agc_threshold = 150, agc_now = 0;
+gpsdata mubiao_gps = {110.5, 0, 36000.0 + 6370.0}, zhuantai_gps = {104.06, 30.67, 6370};
 
 
 
@@ -238,27 +238,27 @@ void IMU300_task(void *pdata)
 	
 	while(1)
 	{
-		if(UART4_RX_STA&(1<<15))	//接收到一次数据了
+
+		if ( UART4_RX_BUF[0] == e13.header && UART4_RX_BUF[1] == e13.len && UART4_RX_BUF[2] == e13.addr && UART4_RX_BUF[3] == e13.cmd )
 		{
-			u16 rxlen = UART4_RX_STA & 0x7FFF;																	//得到数据长度
-			UART4_RX_STA = 0;	//清除接收状态标志，开始下一次接收
-			if(rxlen >= 27)
-			{
-				if(UART4_RX_BUF[0] == e13.header && UART4_RX_BUF[1] == e13.len && UART4_RX_BUF[2]==e13.addr && UART4_RX_BUF[3]==e13.cmd)
-				{
-					memcpy((u8*)&e13, UART4_RX_BUF, sizeof(e13));
-					gpitch = cal_angle(e13.pitch);
-					groll = cal_angle(e13.roll);
-					JieSuanJieGuo(gpitch, groll, AGC_threshold, AGC_now, mubiao_gps, zhuantai_gps, &FangWei_ZhuanTai, &FuYang_ZhuanTai);
-					
-					e14.fwdata[0] =(u8)((u16)(FangWei_ZhuanTai * 100) & 0xff);
-					e14.fwdata[1] =(u8)(((u16)(FangWei_ZhuanTai * 100) & 0xff00)>>8);
-					e14.gddata[0] =(u8)((u16)(FuYang_ZhuanTai * 100) & 0xff);
-					e14.gddata[1] =(u8)(((u16)(FuYang_ZhuanTai * 100) & 0xff00)>>8);
-					e14.check = check((u8 *)&e14, sizeof(e14)-1);
-					usart1_send((u8 *)&e14,sizeof(e14));
-				}
-			}
+			memcpy ( ( u8* ) &e13, UART4_RX_BUF, sizeof ( e13 ) );
+			gpitch = cal_angle ( e13.pitch );
+			groll = cal_angle ( e13.roll );
+			JieSuanJieGuo ( gpitch, groll, agc_threshold, agc_now, mubiao_gps, zhuantai_gps, &FangWei_ZhuanTai, &FuYang_ZhuanTai );
+
+			e14.fwdata[0] = ( u8 ) ( ( u16 ) ( FangWei_ZhuanTai * 100 ) & 0xff );
+			e14.fwdata[1] = ( u8 ) ( ( ( u16 ) ( FangWei_ZhuanTai * 100 ) & 0xff00 ) >> 8 );
+			e14.gddata[0] = ( u8 ) ( ( u16 ) ( FuYang_ZhuanTai * 100 ) & 0xff );
+			e14.gddata[1] = ( u8 ) ( ( ( u16 ) ( FuYang_ZhuanTai * 100 ) & 0xff00 ) >> 8 );
+			e14.check = check ( ( u8* ) &e14, sizeof ( e14 ) - 1 );
+			usart1_send ( ( u8* ) &e14, sizeof ( e14 ) );
+		}
+
+
+		if ( UART5_RX_BUF[0] == e15.header && UART5_RX_BUF[1] == e15.frameno )
+		{
+			memcpy ( ( u8* ) &e15, UART5_RX_BUF, sizeof ( e15 ) );
+			agc_now = e15.AGC;
 		}
 		delay_ms(20);
  	}

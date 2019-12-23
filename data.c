@@ -47,6 +47,11 @@ msg_e14 e14 = {
 	.frameno = 0xFB
 };
 
+msg_e15 e15 = {
+	.header = 0xAA,
+	.frameno = 0xF9
+};
+
 
 u8 check ( u8* buf, u16 len )
 {
