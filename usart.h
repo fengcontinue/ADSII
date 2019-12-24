@@ -16,9 +16,9 @@ extern u8  UART4_TX_BUF[UART4_SEND_LEN]; 		//发送缓冲
 extern vu16 UART4_RX_STA;         						//接收状态标记	
 void UART4_Init(u32 bound);
 
-#define UART5_RECV_LEN  			800
-#define UART5_SEND_LEN				800
-#define EN_UART5_RX 						0							//使能（1）/禁止（0）串口5接收
+#define UART5_RECV_LEN  			128
+#define UART5_SEND_LEN				128
+#define EN_UART5_RX 						1							//使能（1）/禁止（0）串口5接收
 	  	
 extern u8  UART5_RX_BUF[UART5_RECV_LEN]; 			//接收缓冲，以0D 0A结束
 extern u8  UART5_TX_BUF[UART5_SEND_LEN]; 			//发送缓冲

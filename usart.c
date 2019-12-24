@@ -37,108 +37,6 @@ int fputc ( int ch, FILE* f )
 
 
 
-/*************************************************************************
-**	UART5（调试）
-**************************************************************************/
-
-u8 UART5_TX_BUF[UART5_SEND_LEN];
-u8 UART5_RX_BUF[UART5_RECV_LEN];
-#if EN_UART5_RX
-vu16 UART5_RX_STA = 0;
-
-//UART5中断服务函数
-void UART5_IRQHandler ( void )
-{
-	u8 Res;
-#if SYSTEM_SUPPORT_UCOS
-	OSIntEnter();
-#endif
-
-	if ( USART_GetITStatus ( UART5, USART_IT_RXNE ) != RESET )
-	{
-		Res = USART_ReceiveData ( UART5 );
-
-		if ( ( UART5_RX_STA & 0x8000 ) == 0 )
-		{
-			if ( UART5_RX_STA & 0x4000 )
-			{
-				if ( Res != 0x0a ) {
-					UART5_RX_STA = 0;
-				}
-				else {
-					UART5_RX_STA |= 0x8000;
-				}
-			}
-			else
-			{
-				if ( Res == 0x0d ) {
-					UART5_RX_STA |= 0x4000;
-				}
-				else
-				{
-					UART5_RX_BUF[UART5_RX_STA & 0X3FFF] = Res ;
-					UART5_RX_STA++;
-
-					if ( UART5_RX_STA > ( UART5_RECV_LEN - 1 ) ) {
-						UART5_RX_STA = 0;
-					}
-				}
-			}
-		}
-	}
-
-#if SYSTEM_SUPPORT_UCOS
-	OSIntExit();
-#endif
-}
-#endif
-
-//UART5初始化函数
-void UART5_Init ( u32 bound )
-{
-	GPIO_InitTypeDef GPIO_InitStructure;
-	USART_InitTypeDef USART_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
-
-	RCC_AHB1PeriphClockCmd ( RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD, ENABLE );
-	RCC_APB1PeriphClockCmd ( RCC_APB1Periph_UART5, ENABLE );
-
-	GPIO_PinAFConfig ( GPIOC, GPIO_PinSource12, GPIO_AF_UART5 );
-	GPIO_PinAFConfig ( GPIOD, GPIO_PinSource2, GPIO_AF_UART5 );
-
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
-	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
-	GPIO_Init ( GPIOC, &GPIO_InitStructure );
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
-	GPIO_Init ( GPIOD, &GPIO_InitStructure );
-
-	USART_InitStructure.USART_BaudRate = bound;
-	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
-	USART_InitStructure.USART_StopBits = USART_StopBits_1;
-	USART_InitStructure.USART_Parity = USART_Parity_No;
-	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
-	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_Init ( UART5, &USART_InitStructure );
-
-	USART_Cmd ( UART5, ENABLE );
-
-	USART_ClearFlag ( UART5, USART_FLAG_TC );
-
-#if EN_UART5_RX
-	USART_ITConfig ( UART5, USART_IT_RXNE, ENABLE );
-
-	NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
-	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init ( &NVIC_InitStructure );
-
-#endif
-
-}
 
 
 
@@ -693,7 +591,8 @@ void UART4_Init ( u32 bound )
 
 	USART_ClearFlag ( UART4, USART_FLAG_TC );
 
-#if EN_USART1_RX
+#if EN_UART4_RX
+    USART_ITConfig ( UART5, USART_IT_IDLE, ENABLE );
 	USART_ITConfig ( UART4, USART_IT_RXNE, ENABLE );
 
 	NVIC_InitStructure.NVIC_IRQChannel = UART4_IRQn;
@@ -708,27 +607,20 @@ void UART4_Init ( u32 bound )
 //UART4中断服务函数
 void UART4_IRQHandler ( void )
 {
+	u8 Clear = Clear;
 #if SYSTEM_SUPPORT_UCOS
 	OSIntEnter();
 #endif
 
 	if ( USART_GetITStatus ( UART4, USART_IT_RXNE ) != RESET )
 	{
-		u8 res;
-		res = USART_ReceiveData ( UART4 );
-
-		if ( ( UART4_RX_STA & ( 1 << 15 ) ) == 0 )
-		{
-			if ( UART4_RX_STA < UART4_RECV_LEN )
-			{
-				
-				UART4_RX_BUF[UART4_RX_STA++] = res;
-			}
-			else
-			{	
-				UART4_RX_STA |= 1 << 15;
-			}
-		}
+		UART4_RX_BUF[UART4_RX_STA++] = USART_ReceiveData ( UART4 );
+	}
+	else if ( USART_GetITStatus ( UART4, USART_IT_IDLE ) != RESET )
+	{
+		Clear = UART4->SR;
+		Clear = UART4->DR;
+		UART5_RX_STA = 0;
 	}
 
 #if SYSTEM_SUPPORT_UCOS
@@ -736,5 +628,86 @@ void UART4_IRQHandler ( void )
 #endif
 }
 #endif
+/*************************************************************************
+**	UART5（AP）
+**************************************************************************/
+
+u8 UART5_TX_BUF[UART5_SEND_LEN];
+u8 UART5_RX_BUF[UART5_RECV_LEN];
+#if EN_UART5_RX
+vu16 UART5_RX_STA = 0;
+
+//UART5中断服务函数
+void UART5_IRQHandler ( void )
+{
+	u8 Clear = Clear;
+#if SYSTEM_SUPPORT_UCOS
+	OSIntEnter();
+#endif
+
+	if ( USART_GetITStatus ( UART5, USART_IT_RXNE ) != RESET )
+	{
+		UART5_RX_BUF[UART5_RX_STA++] = USART_ReceiveData ( UART5 );
+	}
+	else if ( USART_GetITStatus ( UART5, USART_IT_IDLE ) != RESET )
+	{
+		Clear = UART5->SR;
+		Clear = UART5->DR;
+		UART5_RX_STA = 0;
+	}
+
+#if SYSTEM_SUPPORT_UCOS
+	OSIntExit();
+#endif
+}
+#endif
+
+//UART5初始化函数
+void UART5_Init ( u32 bound )
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	USART_InitTypeDef USART_InitStructure;
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	RCC_AHB1PeriphClockCmd ( RCC_AHB1Periph_GPIOC | RCC_AHB1Periph_GPIOD, ENABLE );
+	RCC_APB1PeriphClockCmd ( RCC_APB1Periph_UART5, ENABLE );
+
+	GPIO_PinAFConfig ( GPIOC, GPIO_PinSource12, GPIO_AF_UART5 );
+	GPIO_PinAFConfig ( GPIOD, GPIO_PinSource2, GPIO_AF_UART5 );
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init ( GPIOC, &GPIO_InitStructure );
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_Init ( GPIOD, &GPIO_InitStructure );
+
+	USART_InitStructure.USART_BaudRate = bound;
+	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
+	USART_InitStructure.USART_StopBits = USART_StopBits_1;
+	USART_InitStructure.USART_Parity = USART_Parity_No;
+	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init ( UART5, &USART_InitStructure );
+
+	USART_Cmd ( UART5, ENABLE );
+
+	USART_ClearFlag ( UART5, USART_FLAG_TC );
+
+#if EN_UART5_RX
+    USART_ITConfig ( UART5, USART_IT_IDLE, ENABLE );
+	USART_ITConfig ( UART5, USART_IT_RXNE, ENABLE );
+
+	NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 3;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init ( &NVIC_InitStructure );
+
+#endif
+
+}
 
 
